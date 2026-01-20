@@ -4,6 +4,7 @@ import firebase_admin
 from firebase_admin import credentials, db
 import os
 import json
+from typing import Union, List, Dict
 
 # ----------------------------
 # App setup
@@ -15,9 +16,12 @@ app = FastAPI()
 # ----------------------------
 FIREBASE_DB_URL = "https://employee-time-tracker-43b16-default-rtdb.firebaseio.com/"
 
-service_account_info = json.loads(
-    os.environ["FIREBASE_SERVICE_ACCOUNT"]
-)
+service_account_json = os.environ.get("FIREBASE_SERVICE_ACCOUNT")
+
+if not service_account_json:
+    raise RuntimeError("FIREBASE_SERVICE_ACCOUNT env variable not set")
+
+service_account_info = json.loads(service_account_json)
 
 if not firebase_admin._apps:
     cred = credentials.Certificate(service_account_info)
@@ -34,10 +38,17 @@ INTERVAL_SECONDS = 5
 last_punch_times = {}
 
 # ----------------------------
+# Health check (IMPORTANT FOR RENDER)
+# ----------------------------
+@app.get("/")
+def health():
+    return {"status": "ok", "service": "easytimepro"}
+
+# ----------------------------
 # POST Attendance
 # ----------------------------
 @app.post("/attendance")
-def receive_attendance(data: dict | list):
+def receive_attendance(data: Union[Dict, List[Dict]]):
     records = [data] if isinstance(data, dict) else data
     responses = []
 
@@ -73,7 +84,6 @@ def receive_attendance(data: dict | list):
         })
 
     return responses
-
 
 # ----------------------------
 # GET Attendance
